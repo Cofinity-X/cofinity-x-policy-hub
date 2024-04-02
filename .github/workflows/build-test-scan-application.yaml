@@ -46,10 +46,16 @@ jobs:
 
       - name: SonarCloud Code Analysis
         run: |
+          dotnet tool install --global dotnet-sonarscanner
           dotnet tool install --global dotnet-coverage
-          ./.sonar/scanner/dotnet-sonarscanner begin /k:"${{ inputs.SONAR_PROJECT_KEY }}" /o:"Cofinity-X" /d:sonar.login="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.cs.vscoveragexml.reportsPaths=src/coverage.xml
+          dotnet sonarscanner begin \
+            -k:"${{ inputs.SONAR_PROJECT_KEY }}" \
+            -o:"Cofinity-X" \
+            -d:sonar.login="${{ secrets.SONAR_TOKEN }}" \
+            -d:sonar.host.url="https://sonarcloud.io" \
+            -d:sonar.cs.vscoveragexml.reportsPaths=src/coverage.xml
           dotnet build src
           cd src
           dotnet-coverage collect 'dotnet test --no-restore --verbosity normal' -s 'settings-coverage.xml' -f xml -o 'coverage.xml'
           cd ..
-          ./.sonar/scanner/dotnet-sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
+          dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
