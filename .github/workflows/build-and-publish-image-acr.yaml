@@ -1,0 +1,108 @@
+name: Build and publish container image to the Azure Container Registry (ACR)
+
+on:
+  workflow_call:
+    inputs:
+      docker-file-path:
+        required: true
+        type: string
+      github-actor:
+        required: true
+        type: string
+    secrets: 
+      AZURE_CLIENT_ID:
+          required: true
+      AZURE_TENANT_ID: 
+        required: true
+      AZURE_SUBSCRIPTION_ID:
+        required: true
+      AZURE_CONTAINER_REGISTRY:
+        required: true
+
+jobs:
+  build-scan-push:
+    runs-on: ubuntu-latest
+    environment: acr-shared-env
+    env:
+      IMAGE_NAME: policy-hub-core/images/policy-hub
+      IMAGE_TAG: github-${{ github.run_id }}-${{ github.run_number }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract metadata (tags, labels) for Docker based on trigger event
+        id: docker_meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+             ${{ secrets. AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}
+          # Automatically prepare image tags; See action docs for more examples.
+          # semver patter will generate tags like these for example :1 :1.2 :1.2.3
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ env.IMAGE_TAG }}
+            type=sha,enable={{is_default_branch}},prefix={{branch}}-
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          file: ${{ inputs.docker-file-path }}
+          tags:  ${{ steps.docker_meta.outputs.tags }}
+          labels: ${{ steps.docker_meta.outputs.labels }}
+        
+
+       # Establish authentication with azure
+      - name: Azure CLI auth
+        uses: azure/login@v2
+        with:
+            client-id: ${{ secrets.AZURE_CLIENT_ID }}
+            tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+            subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Login into Azure Container Registry (ACR)
+      - name: ACR Login
+        run: az acr login --name  ${{ secrets. AZURE_CONTAINER_REGISTRY }}
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ' ${{ secrets. AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}'
+          hide-progress: false
+          format: "sarif"
+          output: 'trivy-results.sarif'
+          severity: "CRITICAL,HIGH"
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Azure CLI auth
+        if: ${{ inputs.github-actor != 'dependabot[bot]' }}
+        uses: azure/login@v2
+        with:
+            client-id: ${{ secrets.AZURE_CLIENT_ID }}
+            tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+            subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: ACR Login
+        if: ${{ inputs.github-actor != 'dependabot[bot]' }}
+        run: az acr login --name  ${{ secrets. AZURE_CONTAINER_REGISTRY }}
+    
+      - name: Push Docker image to ACR
+        if: ${{ inputs.github-actor != 'dependabot[bot]' }}
+        run: |
+          for tag in $(echo "${{ steps.docker_meta.outputs.tags }}" | tr ',' '\n')
+          do
+            if [[ ! $tag =~ ${{ env.IMAGE_TAG }} ]] 
+            then
+              docker push $tag
+            fi
+          done

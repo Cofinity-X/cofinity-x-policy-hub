@@ -1,0 +1,54 @@
+name: Build, Test, Scan
+
+on:
+  workflow_call:
+    inputs: 
+      SONAR_PROJECT_KEY:
+        type: string
+        required: true
+    secrets:
+      SONAR_TOKEN:
+        required: true
+
+jobs:
+  build-test-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin' 
+          check-latest: true
+
+      - name: Cache SonarCloud packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Set up codeql
+        uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
+
+      - name: Run codeql analysis
+        uses: github/codeql-action/analyze@v3
+
+      - name: SonarCloud Code Analysis
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          dotnet tool install --global dotnet-coverage
+          ./.sonar/scanner/dotnet-sonarscanner begin /k:"${{ inputs.SONAR_PROJECT_KEY }}" /o:"Cofinity-X" /d:sonar.login="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.cs.vscoveragexml.reportsPaths=src/coverage.xml
+          dotnet build src
+          cd src
+          dotnet-coverage collect 'dotnet test --no-restore --verbosity normal' -s 'settings-coverage.xml' -f xml -o 'coverage.xml'
+          cd ..
+          ./.sonar/scanner/dotnet-sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
