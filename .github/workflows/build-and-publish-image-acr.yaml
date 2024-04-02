@@ -73,7 +73,7 @@ jobs:
         run: az acr login --name  ${{ secrets. AZURE_CONTAINER_REGISTRY }}
       
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@v0.19.0
+        uses: aquasecurity/trivy-action@0.19.0
         with:
           image-ref: ' ${{ secrets. AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}'
           hide-progress: false
