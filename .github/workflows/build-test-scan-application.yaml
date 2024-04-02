@@ -50,7 +50,7 @@ jobs:
           dotnet tool install --global dotnet-coverage
           dotnet sonarscanner begin \
             -k:"${{ inputs.SONAR_PROJECT_KEY }}" \
-            -o:"Cofinity-X" \
+            -o:"cofinity-x" \
             -d:sonar.login="${{ secrets.SONAR_TOKEN }}" \
             -d:sonar.host.url="https://sonarcloud.io" \
             -d:sonar.cs.vscoveragexml.reportsPaths=src/coverage.xml
