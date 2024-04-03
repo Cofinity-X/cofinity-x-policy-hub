@@ -43,11 +43,13 @@ jobs:
       id: filter
       with:
         filters: |
-          database:
+          database: &database
             - 'src/database/PolicyHub.Migrations/**'
             - 'src/database/PolicyHub.Entities/**'
             - '/.github/workflows/build-and-publish-migrations-image-acr.yaml'
             - 'docker/Dockerfile-policy-hub-migrations'
+          allChanges:
+            - added|deleted|modified: *database
 
   # Build the application and perform sonar and codeql scan
   application-quality-gates:
