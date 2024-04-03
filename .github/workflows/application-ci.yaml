@@ -36,8 +36,9 @@ jobs:
     - name: Checkout code
       if: github.event_name != 'pull_request'
       uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      with:
+        fetch-depth: 0
+
     - uses: dorny/paths-filter@v3
       id: filter
       with:
