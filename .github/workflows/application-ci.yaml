@@ -1,0 +1,53 @@
+name: Application CI
+
+on:
+  push:
+    branches:
+      - 'main'
+    paths-ignore:
+      - 'charts/**'
+      - 'docs/**'
+      - 'consortia/**'
+      - 'scripts/**'
+    tags:
+      - 'v*.*.*'
+      - 'v*.*.*-*'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - 'charts/**'
+      - 'docs/**'
+      - 'consortia/**'
+      - 'scripts/**'
+  workflow_dispatch:
+
+jobs:
+  application-quality-gates:
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    uses: ./.github/workflows/build-test-scan-application.yaml
+    with:
+      SONAR_PROJECT_KEY: Cofinity-X_cofinity-x-policy-hub
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  dockerizing-application: 
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+      id-token: write
+    needs: application-quality-gates
+    
+    uses: ./.github/workflows/build-and-publish-image-acr.yaml
+    with: 
+      docker-file-path: docker/Dockerfile-policy-hub-service
+      github-actor: ${{ github.actor }}
+    secrets: 
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      AZURE_CONTAINER_REGISTRY: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
