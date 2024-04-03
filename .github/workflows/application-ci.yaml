@@ -46,7 +46,7 @@ jobs:
           database: &database
             - 'src/database/PolicyHub.Migrations/**'
             - 'src/database/PolicyHub.Entities/**'
-            - '/.github/workflows/build-and-publish-migrations-image-acr.yaml'
+            - '.github/workflows/build-and-publish-migrations-image-acr.yaml'
             - 'docker/Dockerfile-policy-hub-migrations'
           allChanges:
             - added|deleted|modified: *database
