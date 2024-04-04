@@ -31,6 +31,13 @@ jobs:
       IMAGE_TAG: github-${{ github.run_id }}-${{ github.run_number }}
 
     steps:
+      - name: Debug if condition
+        if:  ${{ (inputs.github-actor != 'dependabot[bot]') || (inputs.github-event != 'pull_request') }}
+        run: |
+          echo ${{ inputs.github-actor }}
+          echo ${{ inputs.github-event }}
+          echo ${{ (inputs.github-actor != 'dependabot[bot]') || (inputs.github-event != 'pull_request') }}
+
       - name: Checkout repository
         uses: actions/checkout@v4
 

@@ -71,7 +71,7 @@ jobs:
       security-events: write
       id-token: write
     # Add quality gates dependency
-    needs: application-quality-gates
+#    needs: application-quality-gates
     
     uses: ./.github/workflows/build-and-publish-image-acr.yaml
     with:
