@@ -23,6 +23,35 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Check if there are changes related to migrations (This is used to decide whether to build migrations container build or not)
+  detect-changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+      contents: read
+    outputs:
+      build-migrations: ${{ steps.filter.outputs.database }}
+    steps:
+    # For pull requests it's not necessary to checkout the code
+    - name: Checkout code
+      if: github.event_name != 'pull_request'
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - uses: dorny/paths-filter@v3
+      id: filter
+      with:
+        filters: |
+          database: &database
+            - 'src/database/PolicyHub.Migrations/**'
+            - 'src/database/PolicyHub.Entities/**'
+            - '.github/workflows/build-and-publish-migrations-image-acr.yaml'
+            - 'docker/Dockerfile-policy-hub-migrations'
+          allChanges:
+            - added|deleted|modified: *database
+
+  # Build the application and perform sonar and codeql scan
   application-quality-gates:
     permissions:
       contents: read
@@ -34,19 +63,41 @@ jobs:
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
+  # Build application container image, scan it, and publish to ACR
   dockerizing-application: 
     permissions:
       contents: read
       actions: read
       security-events: write
       id-token: write
+    # Add quality gates dependency
     needs: application-quality-gates
     
     uses: ./.github/workflows/build-and-publish-image-acr.yaml
-    with: 
+    with:
       docker-file-path: docker/Dockerfile-policy-hub-service
       github-actor: ${{ github.actor }}
-    secrets: 
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      AZURE_CONTAINER_REGISTRY: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
+
+  dockerizing-application-migrations:
+    # Add depedency of quality gates and changes related to migrations
+    needs: [ application-quality-gates, detect-changes ]
+    if: ${{ needs.detect-changes.outputs.build-migrations == 'true' }}
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+      id-token: write
+
+    uses: ./.github/workflows/build-and-publish-migrations-image-acr.yaml
+    with:
+      docker-file-path: docker/Dockerfile-policy-hub-migrations
+      github-actor: ${{ github.actor }}
+    secrets:
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
