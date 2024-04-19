@@ -35,38 +35,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Setup JQ
-        run:
-          sudo apt-get install jq
-
-      - name: Update JSON file
-        env:
-          project: ${{ secrets.REPORTPORTAL_PROJECT }}
-          apiKey: ${{ secrets.REPORTPORTAL_AUTHENTICATION_UUID }}
-          url: ${{ vars.REPORTPORTAL_URL }}
-        run: |
-          cd tests/endToEnd
-          jq --arg project "$project" \
-          --arg apiKey "$apiKey" \
-          --arg url "$url" \
-          '.server |= ( .project = $project | .apiKey = $apiKey | .url = $url )' \
-          ReportPortal.config.json > temp.json
-          mv temp.json ReportPortal.config.json
       - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
         uses: actions/setup-dotnet@v2
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
+
       - name: Install dependencies
-        run: dotnet restore src
+        run: |
+          dotnet restore src
+
       - name: Build
         run: dotnet build src --configuration Release --no-restore
+
       - name: Tests - PolicyHub E2E Tests
         env:
           ENVIRONMENT: ${{ github.event.inputs.environment }}
           AUTH_CLIENT_ID: ${{ secrets.AUTH_CLIENT_ID }}
           AUTH_CLIENT_SECRET: ${{ secrets.AUTH_CLIENT_SECRET }}
           AUTH_URL: ${{ secrets.AUTH_URL }}
-        run: dotnet test tests/endToEnd --no-restore --verbosity minimal --logger "html;logfilename=e2ePolicyHub.html"
+        run: dotnet test tests/hub/PolicyHub.Service.Tests --no-restore --verbosity minimal --logger "html;logfilename=e2ePolicyHub.html"
+
       - name: 'Upload Artifact'
         if: always()
         uses: actions/upload-artifact@v3
