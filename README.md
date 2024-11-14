@@ -1,3 +1,6 @@
+# Project Status
+**Note**: This repository is no longer being actively maintained/used since the start of Jupiter in October 2024. The code is available as-is for reference or forking.
+
 # Policy-Hub
 
 This repository contains the backend code for the Policy-Hub written in C#.
