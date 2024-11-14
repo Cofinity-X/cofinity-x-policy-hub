@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0-cfx-1 (2024-11-14)
+* Added pipelines for container image build, sonar scan, and trivy scan by @niteshsakhiya in https://github.com/Cofinity-X/cofinity-x-policy-hub/pull/1
+
+
+
 ## [0.1.0](https://github.com/eclipse-tractusx/policy-hub/compare/v0.1.0-rc.3...v0.1.0) (2024-03-06)
 
 
